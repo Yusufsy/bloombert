@@ -4,20 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="2ecd618a-0a98-4e1b-879d-9fb96ef8f309" name="Changes" comment="BloomBert 1.0">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/BloomBert.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ai/ai.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ai/data/expanded_combined_dataset.csv" afterDir="false" />
+    <list default="true" id="2ecd618a-0a98-4e1b-879d-9fb96ef8f309" name="Changes" comment="BloomBert 1.0 dataset">
       <change afterPath="$PROJECT_DIR$/ai/model/fine_tuned_bert_model.pkl" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ai/model/label_encoder.pkl" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/instance/site.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,6 +23,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "Yusufsy"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/Yusufsy/bloombert.git",
+    "accountId": "7b5f964b-35de-4120-85a1-1c96b5fcabfc"
+  }
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 5
 }</component>
@@ -198,10 +199,28 @@
       <option name="presentableId" value="Default" />
       <updated>1712983359678</updated>
     </task>
+    <task id="LOCAL-00001" summary="BloomBert 1.0">
+      <option name="closed" value="true" />
+      <created>1714370477976</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1714370477976</updated>
+    </task>
+    <task id="LOCAL-00002" summary="BloomBert 1.0 dataset">
+      <option name="closed" value="true" />
+      <created>1714370511477</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1714370511477</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="BloomBert 1.0" />
-    <option name="LAST_COMMIT_MESSAGE" value="BloomBert 1.0" />
+    <MESSAGE value="BloomBert 1.0 dataset" />
+    <option name="LAST_COMMIT_MESSAGE" value="BloomBert 1.0 dataset" />
   </component>
 </project>
