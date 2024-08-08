@@ -44,6 +44,7 @@ class Test(db.Model):
     title = db.Column(db.String(255), nullable=False)
     creation_date = db.Column(db.DateTime, default=datetime.now)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    graduate_level = db.Column(db.String(50), nullable=False, default='Undergraduate')  # New field
     questions = db.relationship('Question', backref='test', lazy='dynamic', cascade='all, delete-orphan')
 
 
@@ -118,7 +119,10 @@ def register():
     db.session.add(new_user)
     db.session.commit()
 
-    return jsonify({'message': 'User registered successfully!'}), 201
+    token = jwt.encode({'user_id': new_user.id, 'exp': datetime.now() + timedelta(minutes=30)},
+                       app.config['SECRET_KEY'])
+
+    return jsonify({'message': 'User registered successfully!', 'token': token}), 201
 
 
 @app.route('/tests', methods=['POST'])
@@ -127,8 +131,9 @@ def create_test(current_user):
     data = request.get_json()
     title = data.get('title')
     questions = data.get('questions', [])  # This expects a list of question strings
+    graduate_level = data.get('graduate_level', 'Undergraduate')  # Default to 'Undergraduate'
 
-    new_test = Test(title=title, user_id=current_user.id)
+    new_test = Test(title=title, user_id=current_user.id, graduate_level=graduate_level)
     db.session.add(new_test)
     db.session.commit()
 
@@ -150,6 +155,7 @@ def get_user_tests(current_user):
         test_data = {
             'id': test.id,
             'title': test.title,
+            'graduate_level': test.graduate_level,  # Include graduate_level
             'questions': [question.content for question in test.questions]
         }
         user_tests.append(test_data)
@@ -212,55 +218,30 @@ def delete_test(current_user, test_id):
     return jsonify({'message': 'Test deleted successfully'}), 200
 
 
-# def calculate_insights_for_user(user_id):
-#     # Fetch all tests created by the user
-#     tests = Test.query.filter_by(user_id=user_id).all()
-#
-#     # Create a dictionary to hold the count of each classification category
-#     classification_count = {
-#         'Remembering': 0,
-#         'Understanding': 0,
-#         'Applying': 0,
-#         'Analyzing': 0,
-#         'Evaluating': 0,
-#         'Creating': 0
-#     }
-#
-#     # Iterate over each test and each question to populate the classification_count dictionary
-#     for test in tests:
-#         for question in test.questions:
-#             if question.classification in classification_count:
-#                 classification_count[question.classification] += 1
-#
-#     # Calculate total questions and percentages for each category
-#     total_questions = sum(classification_count.values())
-#     classification_percentages = {}
-#     if total_questions > 0:
-#         for classification, count in classification_count.items():
-#             percentage = (count / total_questions) * 100
-#             classification_percentages[classification] = round(percentage, 2)
-#
-#     return {
-#         'total_questions': total_questions,
-#         'counts': classification_count,
-#         'percentages': classification_percentages
-#     }
-
-
 @app.route('/insights', methods=['GET'])
 @token_required
 def get_insights(current_user):
     # Fetch all tests created by the user
     tests = Test.query.filter_by(user_id=current_user.id).all()
 
-    # Create a dictionary to hold the count of each classification category
-    classification_count = {
-        'Knowledge': 0,
-        'Comprehension': 0,
-        'Application': 0,
-        'Analysis': 0,
-        'Evaluation': 0,
-        'Synthesis': 0
+    # Create dictionaries to hold the count of each classification category by graduate level
+    classification_counts = {
+        'Undergraduate': {
+            'Knowledge': 0,
+            'Comprehension': 0,
+            'Application': 0,
+            'Analysis': 0,
+            'Evaluation': 0,
+            'Synthesis': 0
+        },
+        'Graduate': {
+            'Knowledge': 0,
+            'Comprehension': 0,
+            'Application': 0,
+            'Analysis': 0,
+            'Evaluation': 0,
+            'Synthesis': 0
+        }
     }
 
     # Load the model and tokenizer
@@ -273,12 +254,26 @@ def get_insights(current_user):
     with open(label_encoder_path, 'rb') as le_file:
         label_encoder = pickle.load(le_file)
 
-    total_questions = 0  # Initialize total questions counter
+    total_questions = {
+        'Undergraduate': 0,
+        'Graduate': 0
+    }  # Initialize total questions counters for each level
+
+    total_tests = {
+        'Undergraduate': 0,
+        'Graduate': 0
+    }  # Initialize total tests counters for each level
 
     # Iterate over each test and classify questions
     for test in tests:
         questions = [question.content for question in test.questions]
-        total_questions += len(questions)  # Increment total questions counter
+        level = test.graduate_level  # Assuming each test has a graduate_level attribute
+        if level not in classification_counts:
+            continue  # Skip if the level is unknown
+
+        total_questions[level] += len(questions)  # Increment total questions counter for the level
+        total_tests[level] += 1  # Increment total tests counter for the level
+
         # Process and classify questions
         model.eval()  # Set the model to evaluation mode
         device = torch.device("mps" if torch.has_mps else "cpu")
@@ -296,21 +291,24 @@ def get_insights(current_user):
                 # Map the numerical label to the actual category
                 category = label_encoder.inverse_transform([prediction])[0]
                 # Update classification count dictionary
-                if category in classification_count:
-                    classification_count[category] += 1
+                if category in classification_counts[level]:
+                    classification_counts[level][category] += 1
 
-    # Calculate percentages for each category only if total_questions is not zero
-    classification_percentages = {category: round(count / total_questions * 100, 1) if total_questions != 0 else 0
-                                  for category, count in classification_count.items()}
+    # Calculate percentages for each category by graduate level
+    classification_percentages = {
+        level: {category: round(count / total_questions[level] * 100, 1) if total_questions[level] != 0 else 0
+                for category, count in counts.items()}
+        for level, counts in classification_counts.items()
+    }
 
     # Debugging: Print classification counts and percentages
-    print("Classification Counts:", classification_count)
+    print("Classification Counts:", classification_counts)
     print("Classification Percentages:", classification_percentages)
 
     return jsonify({
         'total_questions': total_questions,
-        'total_tests': len(tests),
-        'counts': classification_count,
+        'total_tests': total_tests,
+        'counts': classification_counts,
         'percentages': classification_percentages
     })
 
