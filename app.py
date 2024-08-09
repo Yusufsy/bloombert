@@ -18,7 +18,7 @@ app.config['SECRET_KEY'] = 'bloom_bert_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-CORS(app, origins=["http://localhost:3000"])  # Allow requests only from http://localhost:3000
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 db = SQLAlchemy(app)
 
