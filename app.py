@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 from functools import wraps
-
 from flask import Flask, request, jsonify, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -9,6 +8,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import pickle
 import torch
 from transformers import BertTokenizer
+import subprocess
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -86,9 +86,6 @@ def token_required(f):
 def login():
     print(request.json)
     auth = request.json
-    # if not auth or not auth.username or not auth.password:
-    #     print(auth)
-    #     return make_response('Could not verify', 401, {'WWW-Authenticate': 'Basic realm="Login required!"'})
     user = User.query.filter_by(username=auth['username']).first()
     if not user:
         return make_response('User not found', 401, {'WWW-Authenticate': 'Basic realm="Login required!"'})
@@ -138,7 +135,7 @@ def create_test(current_user):
     db.session.commit()
 
     for question_content in questions:
-        new_question = Question(content=question_content, test_id=new_test.id)  # Set test_id here
+        new_question = Question(content=question_content, test_id=new_test.id)
         db.session.add(new_question)
 
     db.session.commit()
@@ -155,7 +152,7 @@ def get_user_tests(current_user):
         test_data = {
             'id': test.id,
             'title': test.title,
-            'graduate_level': test.graduate_level,  # Include graduate_level
+            'graduate_level': test.graduate_level,
             'questions': [question.content for question in test.questions]
         }
         user_tests.append(test_data)
@@ -221,10 +218,8 @@ def delete_test(current_user, test_id):
 @app.route('/insights', methods=['GET'])
 @token_required
 def get_insights(current_user):
-    # Fetch all tests created by the user
     tests = Test.query.filter_by(user_id=current_user.id).all()
 
-    # Create dictionaries to hold the count of each classification category by graduate level
     classification_counts = {
         'Undergraduate': {
             'Knowledge': 0,
@@ -244,12 +239,10 @@ def get_insights(current_user):
         }
     }
 
-    # Load the model and tokenizer
     model_path = 'ai/model/fine_tuned_bert_model.pkl'
     with open(model_path, 'rb') as model_file:
         model = pickle.load(model_file)
 
-    # Load the label encoder to decode numerical labels to category names
     label_encoder_path = 'ai/model/label_encoder.pkl'
     with open(label_encoder_path, 'rb') as le_file:
         label_encoder = pickle.load(le_file)
@@ -257,27 +250,25 @@ def get_insights(current_user):
     total_questions = {
         'Undergraduate': 0,
         'Graduate': 0
-    }  # Initialize total questions counters for each level
+    }
 
     total_tests = {
         'Undergraduate': 0,
         'Graduate': 0
-    }  # Initialize total tests counters for each level
+    }
 
-    # Iterate over each test and classify questions
     for test in tests:
         questions = [question.content for question in test.questions]
-        level = test.graduate_level  # Assuming each test has a graduate_level attribute
+        level = test.graduate_level
         if level not in classification_counts:
-            continue  # Skip if the level is unknown
+            continue
 
-        total_questions[level] += len(questions)  # Increment total questions counter for the level
-        total_tests[level] += 1  # Increment total tests counter for the level
+        total_questions[level] += len(questions)
+        total_tests[level] += 1
 
-        # Process and classify questions
-        model.eval()  # Set the model to evaluation mode
+        model.eval()
         device = torch.device("mps" if torch.has_mps else "cpu")
-        with torch.no_grad():  # Disable gradient computation for inference
+        with torch.no_grad():
             for question in questions:
                 inputs = tokenizer.encode_plus(
                     question,
@@ -287,23 +278,16 @@ def get_insights(current_user):
                     max_length=512
                 ).to(device)
                 output = model(**inputs)
-                prediction = torch.argmax(output.logits, dim=-1).item()  # Extract the class with the highest probability
-                # Map the numerical label to the actual category
+                prediction = torch.argmax(output.logits, dim=-1).item()
                 category = label_encoder.inverse_transform([prediction])[0]
-                # Update classification count dictionary
                 if category in classification_counts[level]:
                     classification_counts[level][category] += 1
 
-    # Calculate percentages for each category by graduate level
     classification_percentages = {
         level: {category: round(count / total_questions[level] * 100, 1) if total_questions[level] != 0 else 0
                 for category, count in counts.items()}
         for level, counts in classification_counts.items()
     }
-
-    # Debugging: Print classification counts and percentages
-    print("Classification Counts:", classification_counts)
-    print("Classification Percentages:", classification_percentages)
 
     return jsonify({
         'total_questions': total_questions,
@@ -314,26 +298,22 @@ def get_insights(current_user):
 
 
 @app.route('/classify', methods=['POST'])
-# @token_required
 def classify_question():
     data = request.json
-    questions = data.get('questions', [])  # Expecting a list of questions in the JSON body
+    questions = data.get('questions', [])
 
-    # Load the model and tokenizer
     model_path = 'ai/model/fine_tuned_bert_model.pkl'
     with open(model_path, 'rb') as model_file:
         model = pickle.load(model_file)
 
-    # Load the label encoder to decode numerical labels to category names
     label_encoder_path = 'ai/model/label_encoder.pkl'
     with open(label_encoder_path, 'rb') as le_file:
         label_encoder = pickle.load(le_file)
 
-    # Process and classify questions
     results = []
-    model.eval()  # Set the model to evaluation mode
+    model.eval()
     device = torch.device("mps" if torch.has_mps else "cpu")
-    with torch.no_grad():  # Disable gradient computation for inference
+    with torch.no_grad():
         for question in questions:
             inputs = tokenizer.encode_plus(
                 question,
@@ -343,9 +323,8 @@ def classify_question():
                 max_length=512
             ).to(device)
             output = model(**inputs)
-            prediction = torch.argmax(output.logits, dim=-1).item()  # Extract the class with the highest probability
+            prediction = torch.argmax(output.logits, dim=-1).item()
 
-            # Map the numerical label to the actual category
             category = label_encoder.inverse_transform([prediction])[0]
 
             results.append({'question': question, 'classification': category})
@@ -368,7 +347,6 @@ def submit_feedback(current_user):
     return jsonify({'message': 'Feedback submitted successfully'}), 201
 
 
-# Update the endpoint to include user email of the feedback sender
 @app.route('/feedback', methods=['GET'])
 @token_required
 def view_feedback(current_user):
@@ -377,13 +355,16 @@ def view_feedback(current_user):
         'id': feedback.id,
         'content': feedback.content,
         'submitted_on': feedback.creation_date.strftime('%Y-%m-%d %H:%M:%S'),
-        'user_email': current_user.email  # Include user's email in the response
+        'user_email': current_user.email
     } for feedback in feedbacks]
 
     return jsonify(feedback_list), 200
 
 
 if __name__ == '__main__':
+    # Run the AI model training script during startup
+    subprocess.run(["python", "ai/ai.py"])
+
     with app.app_context():
         db.create_all()
     app.run(debug=True)

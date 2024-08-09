@@ -1,12 +1,12 @@
 import pandas as pd
 from transformers import BertTokenizer, BertForSequenceClassification, Trainer, TrainingArguments
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
 import torch
 import pickle
 
 # Load the dataset
-file_path = 'data/expanded_combined_dataset.csv'
+file_path = 'ai/data/expanded_combined_dataset.csv'
 df = pd.read_csv(file_path)
 
 # Assuming your dataset has columns like 'question' and 'category'
@@ -92,11 +92,11 @@ trainer = Trainer(
 trainer.train()
 
 # Save the fine-tuned model to a pickle file
-model_output_path = 'model/fine_tuned_bert_model.pkl'
+model_output_path = 'ai/model/fine_tuned_bert_model.pkl'
 with open(model_output_path, 'wb') as f:
     pickle.dump(model, f)
 
 # Save the label encoder for later use
-label_encoder_output_path = 'model/label_encoder.pkl'
+label_encoder_output_path = 'ai/model/label_encoder.pkl'
 with open(label_encoder_output_path, 'wb') as f:
     pickle.dump(label_encoder, f)
